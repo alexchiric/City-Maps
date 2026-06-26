@@ -3,3 +3,5 @@ geopandas
 pandas
 osmnx
 matplotlib
+folium
+mapclassify
