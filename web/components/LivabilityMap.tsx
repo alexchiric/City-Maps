@@ -148,17 +148,30 @@ export default function LivabilityMap() {
     map.setLayoutProperty(SCORES_LAYER, "visibility", scoresVisible ? "visible" : "none");
   }, [scoresVisible, ready]);
 
-  // Click a grid cell to see its per-category breakdown — the choropleth
-  // alone only shows the blended score, not what drove it.
+  // Click a POI for its name/category, or a grid cell for its per-category
+  // breakdown — the choropleth alone only shows the blended score, and the
+  // POI dots alone don't say what they are. POIs take priority since they
+  // render on top of the choropleth.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
 
-    function handleClick(e: maplibregl.MapMouseEvent) {
-      const features = map!.queryRenderedFeatures(e.point, { layers: [SCORES_LAYER] });
-      if (!features.length) return;
-      const props = features[0].properties;
+    function showPoiPopup(e: maplibregl.MapMouseEvent, feature: maplibregl.MapGeoJSONFeature) {
+      const props = feature.properties;
+      const category = props.poi_category as Category;
+      new maplibregl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(
+          `<div style="font-size:13px">
+            <div style="font-weight:600">${props.name ?? CATEGORY_LABELS[category]}</div>
+            <div style="color:#71717a">${CATEGORY_LABELS[category]}</div>
+          </div>`,
+        )
+        .addTo(map!);
+    }
 
+    function showCellPopup(e: maplibregl.MapMouseEvent, feature: maplibregl.MapGeoJSONFeature) {
+      const props = feature.properties;
       const rows = CATEGORIES.map(
         (category) =>
           `<tr><td style="padding-right:8px">${CATEGORY_LABELS[category]}</td><td style="text-align:right">${formatScore(props[category])}</td></tr>`,
@@ -175,6 +188,16 @@ export default function LivabilityMap() {
         .addTo(map!);
     }
 
+    function handleClick(e: maplibregl.MapMouseEvent) {
+      const poiFeatures = map!.queryRenderedFeatures(e.point, { layers: [POIS_LAYER] });
+      if (poiFeatures.length) {
+        showPoiPopup(e, poiFeatures[0]);
+        return;
+      }
+      const cellFeatures = map!.queryRenderedFeatures(e.point, { layers: [SCORES_LAYER] });
+      if (cellFeatures.length) showCellPopup(e, cellFeatures[0]);
+    }
+
     function setPointer() {
       map!.getCanvas().style.cursor = "pointer";
     }
@@ -182,12 +205,16 @@ export default function LivabilityMap() {
       map!.getCanvas().style.cursor = "";
     }
 
-    map.on("click", SCORES_LAYER, handleClick);
+    map.on("click", handleClick);
+    map.on("mouseenter", POIS_LAYER, setPointer);
+    map.on("mouseleave", POIS_LAYER, unsetPointer);
     map.on("mouseenter", SCORES_LAYER, setPointer);
     map.on("mouseleave", SCORES_LAYER, unsetPointer);
 
     return () => {
-      map.off("click", SCORES_LAYER, handleClick);
+      map.off("click", handleClick);
+      map.off("mouseenter", POIS_LAYER, setPointer);
+      map.off("mouseleave", POIS_LAYER, unsetPointer);
       map.off("mouseenter", SCORES_LAYER, setPointer);
       map.off("mouseleave", SCORES_LAYER, unsetPointer);
     };
