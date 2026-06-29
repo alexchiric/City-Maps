@@ -8,10 +8,12 @@ import type { FeatureCollection } from "geojson";
 
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS, type Category } from "@/lib/categories";
 import { DEFAULT_WEIGHTS, formatScore, recomputeLivability, type Weights } from "@/lib/livability";
+import { applyTheme, getInitialTheme, type Theme } from "@/lib/theme";
 import ControlPanel from "./ControlPanel";
 import Legend from "./Legend";
 
-const STREETS_LAYER = "streets-base";
+const STREETS_LIGHT_LAYER = "streets-light";
+const STREETS_DARK_LAYER = "streets-dark";
 const SCORES_SOURCE = "scores";
 const SCORES_LAYER = "scores-fill";
 const POIS_SOURCE = "pois";
@@ -29,6 +31,7 @@ export default function LivabilityMap() {
 
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<Theme>("light");
   const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
   const [activeCategories, setActiveCategories] = useState<Set<Category>>(new Set(CATEGORIES));
   const [streetsVisible, setStreetsVisible] = useState(true);
@@ -39,19 +42,44 @@ export default function LivabilityMap() {
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    // Read here (client-only — this effect never runs during SSR) so the
+    // correct basemap layer is visible from the very first frame, instead of
+    // both defaulting on and waiting for a later effect to sort them out.
+    const initialTheme = getInitialTheme();
+    setTheme(initialTheme);
+
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: {
         version: 8,
         sources: {
-          osm: {
+          "osm-light": {
             type: "raster",
             tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
             tileSize: 256,
             attribution: "© OpenStreetMap contributors",
           },
+          "osm-dark": {
+            type: "raster",
+            tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution: "© CARTO © OpenStreetMap contributors",
+          },
         },
-        layers: [{ id: STREETS_LAYER, type: "raster", source: "osm" }],
+        layers: [
+          {
+            id: STREETS_LIGHT_LAYER,
+            type: "raster",
+            source: "osm-light",
+            layout: { visibility: initialTheme === "light" ? "visible" : "none" },
+          },
+          {
+            id: STREETS_DARK_LAYER,
+            type: "raster",
+            source: "osm-dark",
+            layout: { visibility: initialTheme === "dark" ? "visible" : "none" },
+          },
+        ],
       },
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM,
@@ -138,9 +166,13 @@ export default function LivabilityMap() {
 
   useEffect(() => {
     const map = mapRef.current;
+    // Like the other layout-property effects below: setLayoutProperty throws
+    // "Style is not done loading" if called before the style is ready, even
+    // though these two layers exist from the constructor.
     if (!map || !ready) return;
-    map.setLayoutProperty(STREETS_LAYER, "visibility", streetsVisible ? "visible" : "none");
-  }, [streetsVisible, ready]);
+    map.setLayoutProperty(STREETS_LIGHT_LAYER, "visibility", streetsVisible && theme === "light" ? "visible" : "none");
+    map.setLayoutProperty(STREETS_DARK_LAYER, "visibility", streetsVisible && theme === "dark" ? "visible" : "none");
+  }, [streetsVisible, theme, ready]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -156,15 +188,21 @@ export default function LivabilityMap() {
     const map = mapRef.current;
     if (!map || !ready) return;
 
+    // Popups are raw HTML strings, not React, so they can't use dark: utility
+    // classes — pick colors directly from the current theme. The popup box's
+    // own background is themed via the .dark override in globals.css.
+    const textColor = theme === "dark" ? "#f4f4f5" : "#18181b";
+    const mutedColor = theme === "dark" ? "#a1a1aa" : "#71717a";
+
     function showPoiPopup(e: maplibregl.MapMouseEvent, feature: maplibregl.MapGeoJSONFeature) {
       const props = feature.properties;
       const category = props.poi_category as Category;
       new maplibregl.Popup()
         .setLngLat(e.lngLat)
         .setHTML(
-          `<div style="font-size:13px;color:#18181b">
+          `<div style="font-size:13px;color:${textColor}">
             <div style="font-weight:600">${props.name ?? CATEGORY_LABELS[category]}</div>
-            <div style="color:#71717a">${CATEGORY_LABELS[category]}</div>
+            <div style="color:${mutedColor}">${CATEGORY_LABELS[category]}</div>
           </div>`,
         )
         .addTo(map!);
@@ -180,7 +218,7 @@ export default function LivabilityMap() {
       new maplibregl.Popup()
         .setLngLat(e.lngLat)
         .setHTML(
-          `<div style="font-size:13px;color:#18181b">
+          `<div style="font-size:13px;color:${textColor}">
             <div style="font-weight:600;margin-bottom:4px">Livability: ${formatScore(props.livability)}</div>
             <table>${rows}</table>
           </div>`,
@@ -218,7 +256,15 @@ export default function LivabilityMap() {
       map.off("mouseenter", SCORES_LAYER, setPointer);
       map.off("mouseleave", SCORES_LAYER, unsetPointer);
     };
-  }, [ready]);
+  }, [ready, theme]);
+
+  // Only this handler writes to localStorage (via applyTheme) — the
+  // system-preference-derived initial value above is never persisted on its
+  // own, so the app keeps following the OS setting until the user picks one.
+  function handleThemeChange(next: Theme) {
+    setTheme(next);
+    applyTheme(next);
+  }
 
   return (
     <div className="relative flex-1">
@@ -228,22 +274,26 @@ export default function LivabilityMap() {
           alone loses the cascade and the container collapses to 0 height. */}
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
       {!ready && (
-        <div className="absolute inset-0 z-[5] flex items-center justify-center bg-white/70">
+        <div className="absolute inset-0 z-[5] flex items-center justify-center bg-white/70 dark:bg-zinc-950/70">
           {loadError ? (
-            <div className="max-w-sm rounded-lg bg-white p-4 text-sm text-red-700 shadow-lg">
+            <div className="max-w-sm rounded-lg bg-white p-4 text-sm text-red-700 shadow-lg dark:bg-zinc-900 dark:text-red-400">
               <div className="font-medium">Couldn&apos;t load map data</div>
-              <div className="mt-1 text-zinc-600">{loadError}</div>
-              <div className="mt-2 text-xs text-zinc-500">
+              <div className="mt-1 text-zinc-600 dark:text-zinc-400">{loadError}</div>
+              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
                 Run <code>python -m pipeline.run</code> from the repo root first.
               </div>
             </div>
           ) : (
-            <div className="rounded-lg bg-white p-4 text-sm text-zinc-700 shadow-lg">Loading map data…</div>
+            <div className="rounded-lg bg-white p-4 text-sm text-zinc-700 shadow-lg dark:bg-zinc-900 dark:text-zinc-300">
+              Loading map data…
+            </div>
           )}
         </div>
       )}
       {ready && scoresVisible && <Legend />}
       <ControlPanel
+        theme={theme}
+        onThemeChange={handleThemeChange}
         weights={weights}
         onWeightsChange={setWeights}
         activeCategories={activeCategories}
