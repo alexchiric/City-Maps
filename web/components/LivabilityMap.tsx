@@ -9,6 +9,7 @@ import type { FeatureCollection } from "geojson";
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS, type Category } from "@/lib/categories";
 import { DEFAULT_WEIGHTS, formatScore, recomputeLivability, type Weights } from "@/lib/livability";
 import ControlPanel from "./ControlPanel";
+import Legend from "./Legend";
 
 const STREETS_LAYER = "streets-base";
 const SCORES_SOURCE = "scores";
@@ -194,6 +195,7 @@ export default function LivabilityMap() {
           same specificity as `.absolute` and loads after it, so a class
           alone loses the cascade and the container collapses to 0 height. */}
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
+      {ready && scoresVisible && <Legend />}
       <ControlPanel
         weights={weights}
         onWeightsChange={setWeights}
