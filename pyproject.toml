@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "livability"
+version = "0.1.0"
+description = "Data + scoring pipeline for the City-Maps livability project"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "osmnx>=2.0",
+    "geopandas>=1.0",
+    "pandas>=2.0",
+    "shapely>=2.0",
+    "networkx>=3.0",
+    "numpy>=1.26",
+    "folium>=0.16",
+    "mapclassify>=2.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter",
+    "ipykernel",
+    "matplotlib",
+]
+postgis = [
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+]
+
+[tool.setuptools.packages.find]
+include = ["livability*", "pipeline*"]
