@@ -1,3 +1,19 @@
+# Claude Code local settings
+.claude/settings.local.json
+
+# Project-generated data
+# /data/ is the pipeline's working dir + disk cache (large, rebuildable, never committed).
+# web/public/data/*.geojson IS committed — it's the actual asset Vercel deploys, and it's
+# not regenerated at Vercel build time (no Python there), so it has to ship with the repo.
+/data/
+
+# Web
+web/node_modules/
+web/.next/
+
+# Env
+.env
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -15,8 +31,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/

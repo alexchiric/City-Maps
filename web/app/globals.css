@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+/* Class-based dark mode: dark: utilities apply when `.dark` is on <html> or an
+   ancestor, set by lib/theme.ts — not driven by prefers-color-scheme directly,
+   so the manual toggle can override the OS default. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* maplibre-gl.css hardcodes the popup box to a white background; this is the
+   only way to theme it, since LivabilityMap builds popup content as raw HTML
+   strings (not React), so dark: utility classes don't apply to them either. */
+.dark .maplibregl-popup-content {
+  background: #18181b;
+}
+.dark .maplibregl-popup-tip {
+  border-top-color: #18181b;
+  border-bottom-color: #18181b;
+  border-left-color: #18181b;
+  border-right-color: #18181b;
+}
+.dark .maplibregl-popup-close-button {
+  color: #a1a1aa;
+}
