@@ -6,8 +6,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import type { FeatureCollection } from "geojson";
 
-import { CATEGORIES, CATEGORY_COLORS, type Category } from "@/lib/categories";
-import { DEFAULT_WEIGHTS, recomputeLivability, type Weights } from "@/lib/livability";
+import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS, type Category } from "@/lib/categories";
+import { DEFAULT_WEIGHTS, formatScore, recomputeLivability, type Weights } from "@/lib/livability";
 import ControlPanel from "./ControlPanel";
 
 const STREETS_LAYER = "streets-base";
@@ -141,6 +141,51 @@ export default function LivabilityMap() {
     if (!map || !ready) return;
     map.setLayoutProperty(SCORES_LAYER, "visibility", scoresVisible ? "visible" : "none");
   }, [scoresVisible, ready]);
+
+  // Click a grid cell to see its per-category breakdown — the choropleth
+  // alone only shows the blended score, not what drove it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+
+    function handleClick(e: maplibregl.MapMouseEvent) {
+      const features = map!.queryRenderedFeatures(e.point, { layers: [SCORES_LAYER] });
+      if (!features.length) return;
+      const props = features[0].properties;
+
+      const rows = CATEGORIES.map(
+        (category) =>
+          `<tr><td style="padding-right:8px">${CATEGORY_LABELS[category]}</td><td style="text-align:right">${formatScore(props[category])}</td></tr>`,
+      ).join("");
+
+      new maplibregl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(
+          `<div style="font-size:13px">
+            <div style="font-weight:600;margin-bottom:4px">Livability: ${formatScore(props.livability)}</div>
+            <table>${rows}</table>
+          </div>`,
+        )
+        .addTo(map!);
+    }
+
+    function setPointer() {
+      map!.getCanvas().style.cursor = "pointer";
+    }
+    function unsetPointer() {
+      map!.getCanvas().style.cursor = "";
+    }
+
+    map.on("click", SCORES_LAYER, handleClick);
+    map.on("mouseenter", SCORES_LAYER, setPointer);
+    map.on("mouseleave", SCORES_LAYER, unsetPointer);
+
+    return () => {
+      map.off("click", SCORES_LAYER, handleClick);
+      map.off("mouseenter", SCORES_LAYER, setPointer);
+      map.off("mouseleave", SCORES_LAYER, unsetPointer);
+    };
+  }, [ready]);
 
   return (
     <div className="relative flex-1">
