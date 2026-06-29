@@ -28,6 +28,7 @@ export default function LivabilityMap() {
   const scoresRef = useRef<FeatureCollection | null>(null);
 
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
   const [activeCategories, setActiveCategories] = useState<Set<Category>>(new Set(CATEGORIES));
   const [streetsVisible, setStreetsVisible] = useState(true);
@@ -58,11 +59,14 @@ export default function LivabilityMap() {
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
+    async function fetchGeoJSON(path: string): Promise<FeatureCollection> {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`${path} returned ${res.status}`);
+      return res.json() as Promise<FeatureCollection>;
+    }
+
     map.on("load", () => {
-      Promise.all([
-        fetch("/data/scores.geojson").then((r) => r.json() as Promise<FeatureCollection>),
-        fetch("/data/pois.geojson").then((r) => r.json() as Promise<FeatureCollection>),
-      ])
+      Promise.all([fetchGeoJSON("/data/scores.geojson"), fetchGeoJSON("/data/pois.geojson")])
         .then(([scores, pois]) => {
           scoresRef.current = scores;
 
@@ -104,8 +108,9 @@ export default function LivabilityMap() {
 
           setReady(true);
         })
-        .catch((err) => {
-          console.error("failed to load /data/*.geojson — run `python -m pipeline.run` first", err);
+        .catch((err: unknown) => {
+          console.error("failed to load map data", err);
+          setLoadError(err instanceof Error ? err.message : String(err));
         });
     });
 
@@ -195,6 +200,21 @@ export default function LivabilityMap() {
           same specificity as `.absolute` and loads after it, so a class
           alone loses the cascade and the container collapses to 0 height. */}
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
+      {!ready && (
+        <div className="absolute inset-0 z-[5] flex items-center justify-center bg-white/70">
+          {loadError ? (
+            <div className="max-w-sm rounded-lg bg-white p-4 text-sm text-red-700 shadow-lg">
+              <div className="font-medium">Couldn&apos;t load map data</div>
+              <div className="mt-1 text-zinc-600">{loadError}</div>
+              <div className="mt-2 text-xs text-zinc-500">
+                Run <code>python -m pipeline.run</code> from the repo root first.
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg bg-white p-4 text-sm text-zinc-700 shadow-lg">Loading map data…</div>
+          )}
+        </div>
+      )}
       {ready && scoresVisible && <Legend />}
       <ControlPanel
         weights={weights}
