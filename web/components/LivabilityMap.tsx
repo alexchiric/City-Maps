@@ -162,7 +162,7 @@ export default function LivabilityMap() {
       new maplibregl.Popup()
         .setLngLat(e.lngLat)
         .setHTML(
-          `<div style="font-size:13px">
+          `<div style="font-size:13px;color:#18181b">
             <div style="font-weight:600">${props.name ?? CATEGORY_LABELS[category]}</div>
             <div style="color:#71717a">${CATEGORY_LABELS[category]}</div>
           </div>`,
@@ -180,7 +180,7 @@ export default function LivabilityMap() {
       new maplibregl.Popup()
         .setLngLat(e.lngLat)
         .setHTML(
-          `<div style="font-size:13px">
+          `<div style="font-size:13px;color:#18181b">
             <div style="font-weight:600;margin-bottom:4px">Livability: ${formatScore(props.livability)}</div>
             <table>${rows}</table>
           </div>`,
