@@ -1,7 +1,7 @@
 "use client";
 
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS, type Category } from "@/lib/categories";
-import type { Weights } from "@/lib/livability";
+import { DEFAULT_WEIGHTS, type Weights } from "@/lib/livability";
 
 interface Props {
   weights: Weights;
@@ -76,7 +76,16 @@ export default function ControlPanel({
       </section>
 
       <section>
-        <h2 className="mb-2 font-medium text-zinc-700">Category weights</h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-medium text-zinc-700">Category weights</h2>
+          <button
+            type="button"
+            onClick={() => onWeightsChange(DEFAULT_WEIGHTS)}
+            className="text-xs text-blue-600 hover:underline"
+          >
+            Reset
+          </button>
+        </div>
         <div className="flex flex-col gap-2">
           {CATEGORIES.map((category) => (
             <div key={category}>
