@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="hexGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#22c55e" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+  </defs>
+  <!-- Hexagon: nod to the H3 grid used for scoring. Subtle dark outline so the
+       shape stays crisp against both light and dark browser tab chrome. -->
+  <polygon
+    points="30,16 23,28.12 9,28.12 2,16 9,3.88 23,3.88"
+    fill="url(#hexGrad)"
+    stroke="#052e16"
+    stroke-opacity="0.35"
+    stroke-width="1"
+  />
+  <!-- Map pin, centered. White fill reads on both ends of the gradient. -->
+  <path
+    transform="translate(4,4)"
+    d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+    fill="#ffffff"
+    stroke="#052e16"
+    stroke-opacity="0.25"
+    stroke-width="0.5"
+  />
+</svg>
