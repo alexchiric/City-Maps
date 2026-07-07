@@ -4,4 +4,6 @@ pandas
 osmnx
 matplotlib
 folium
+h3
 mapclassify
+shapely
